@@ -27,13 +27,19 @@ start_link() ->
     register(?MODULE, Pid=spawn_link(?MODULE, init, [])),
     Pid.
 
+terminate() ->
+    ?MODULE ! shutdown.
+
+%% WHAT IS THIS PID?
 subscribe(Pid) ->
     Ref = erlang:monitor(process, whereis(?MODULE)),
     ?MODULE ! {self(), Ref, {subscribe, Pid}},
     receive
         {Ref, ok} ->
+            io:format("1"),
             {ok, Ref};
         {'DOWN', Ref, process, _Pid, Reason} ->
+            io:format("2"),
             {error, Reason}
     after 5000 ->
             {error, timeout}
@@ -67,8 +73,6 @@ listen(Delay) ->
               []
     end.
 
-terminate() ->
-    ?MODULE ! shutdown.
 
 
 %% #############################################################
@@ -80,8 +84,9 @@ init() ->
 loop(S = #state{}) ->
     receive
         {Pid, MsgRef, {subscribe, ClientPid}} ->
+            io:format("3"),
             Ref = erlang:monitor(process, ClientPid),
-            NewClients = orddict:new(Ref, ClientPid, S#state.clients),
+            NewClients = orddict:store(Ref, ClientPid, S#state.clients),
             Pid ! {MsgRef, ok},
             loop(S#state{clients=NewClients});
 
